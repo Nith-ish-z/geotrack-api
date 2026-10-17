@@ -53,9 +53,6 @@ export const config = {
   get livePushIntervalMs() {
     return numberFrom('LIVE_PUSH_INTERVAL_SECONDS', 30) * 1000;
   },
-  get cronSecret() {
-    return required('CRON_SECRET');
-  },
   get firebaseServiceAccount() {
     return process.env.FIREBASE_SERVICE_ACCOUNT || null;
   },

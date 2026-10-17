@@ -410,17 +410,29 @@ test('avatars are served to the group only', async () => {
   assert.equal((await admin.call('GET', url)).status, 404);
 });
 
-test('the hourly trigger requires the cron secret', async () => {
-  const path = '/api/cron/hourly';
-  assert.equal((await admin.call('GET', path, undefined, null)).status, 401);
-  assert.equal((await admin.call('GET', path, undefined, 'wrong')).status, 401);
+test('a device registers for live pushes, one account per device', async () => {
+  const token = `fake-device-token-${run}`;
+  const saved = await bob.call('PUT', '/api/me/fcm-token', { token });
+  assert.equal(saved.status, 200, JSON.stringify(saved.body));
+  assert.equal(
+    (await users.findOne({ _id: new ObjectId(bob.id) })).fcmToken,
+    token,
+  );
 
-  await bob.call('PUT', '/api/me/fcm-token', { token: 'fake-device-token' });
-  const ok = await admin.call('GET', path, undefined, DEV_ENV.CRON_SECRET);
-  assert.equal(ok.status, 200, JSON.stringify(ok.body));
-  assert.ok(ok.body.devices >= 1);
-  // Firebase isn't configured in this test run, so nothing is actually sent.
-  assert.equal(ok.body.skipped, true);
+  // Someone else logging in on the same phone takes the token over.
+  await cara.call('PUT', '/api/me/fcm-token', { token });
+  assert.equal(
+    (await users.findOne({ _id: new ObjectId(bob.id) })).fcmToken,
+    null,
+  );
+
+  // A viewer's heartbeat pushes to the others; Firebase isn't configured in
+  // this run, so it succeeds without sending anything.
+  const live = await admin.call('POST', '/api/group/presence', {
+    active: true,
+  });
+  assert.equal(live.status, 200, JSON.stringify(live.body));
+  assert.equal(live.body.pushed, 0);
 });
 
 test('only the creator can remove a member', async () => {

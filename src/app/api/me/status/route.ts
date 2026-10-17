@@ -6,7 +6,8 @@ import { statusSchema } from '@/lib/schemas';
 
 /**
  * Device status upload: battery, charging, sound mode, screen state, location.
- * Sent hourly, on a push request, and while the app is open.
+ * Sent by each phone about once an hour on its own schedule, every minute
+ * while the app is open, and when a push asks for it.
  */
 export const POST = authed(async (request, { user }) => {
   const body = await parseBody(request, statusSchema);

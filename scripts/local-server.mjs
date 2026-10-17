@@ -6,7 +6,6 @@ import { MongoMemoryServer } from 'mongodb-memory-server';
 export const DEV_ENV = {
   MONGODB_DB: 'geotracker',
   JWT_SECRET: 'local-development-secret-not-for-production-use',
-  CRON_SECRET: 'local-cron-secret',
 };
 
 export async function startLocalServer({ port, stdio = 'inherit' }) {

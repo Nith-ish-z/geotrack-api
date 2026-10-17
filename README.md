@@ -31,9 +31,8 @@ Set these in `.env.local` locally and as environment variables on Vercel.
 | `JWT_SECRET` | yes | – | Signs session tokens; 32+ random characters |
 | `JWT_EXPIRES_DAYS` | no | `7` | Token lifetime |
 | `JWT_RENEW_GRACE_DAYS` | no | `30` | How long after expiry a token can still be renewed |
-| `FIREBASE_SERVICE_ACCOUNT` | for push | – | Service account JSON (one line or base64); sends the pushes that ask phones for status |
+| `FIREBASE_SERVICE_ACCOUNT` | for live push | – | Service account JSON (one line or base64); lets an open app ask the other phones for fresh status |
 | `STATIC_OTP` | no | `1101` | The login code every phone number accepts until an SMS provider is added |
-| `CRON_SECRET` | yes | – | Protects `/api/cron/hourly`; Vercel Cron sends it automatically |
 | `INVITE_CODE_TTL_SECONDS` | no | `120` | Invite code lifetime |
 | `GROUP_MAX_MEMBERS` | no | `6` | Members per group, creator included |
 | `LIVE_PUSH_INTERVAL_SECONDS` | no | `30` | Minimum gap between live status requests to one group |
@@ -61,8 +60,8 @@ Vercel functions have no fixed IP.
 4. A `401` means the token is missing, forged, replaced, signed out, or expired
    for longer than the grace period. The app must send the user to log in.
 
-Send the token as `Authorization: Bearer <token>` on everything except login
-and the cron endpoint.
+Send the token as `Authorization: Bearer <token>` on everything except the two
+login calls.
 
 ## Endpoints
 
@@ -85,7 +84,6 @@ and the cron endpoint.
 | `POST /api/group/leave` | – | Leave the group |
 | `POST /api/group/presence` | `{ active }` | Foreground heartbeat; triggers live updates |
 | `GET /api/users/:id/avatar` | – | A member's photo, for the same group only |
-| `GET /api/cron/hourly` | – | Hourly trigger; needs `Bearer CRON_SECRET` |
 
 Errors are `{ "error": { "code", "message" } }` with a matching HTTP status.
 
@@ -171,22 +169,28 @@ Indexes are created automatically on first connection.
 
 ## How status stays fresh
 
-Devices are asked for status with a silent FCM data message,
-`{ type: "STATUS_REQUEST", reason: "hourly" | "live" }`. On receipt the app
-reads its status and calls `POST /api/me/status`, including in the background.
+The API never runs on its own: there is no cron job or background process.
+Every change starts with a request from a phone, and the API only checks it,
+stores it in MongoDB and answers. Phones keep the data fresh in three ways:
 
-- **Hourly.** `vercel.json` schedules `GET /api/cron/hourly` at minute 0 of
-  every hour, which pushes to every grouped device. Hourly schedules need the
-  Vercel Pro plan; on Hobby, point any external scheduler at the same URL with
-  the `Authorization: Bearer <CRON_SECRET>` header.
-- **Live.** While a member has the app open it calls
-  `POST /api/group/presence` with `active: true` every 30 seconds. Each call
-  pushes to the other members, at most once per
-  `LIVE_PUSH_INTERVAL_SECONDS` per group, so everyone keeps updating until the
-  viewer closes the app and sends `active: false`.
+- **About once an hour, on each phone's own clock.** The app schedules a
+  background job with Android's WorkManager when the user logs in. It wakes
+  roughly every 60 minutes, counted from when it was first scheduled, reads
+  the device status and calls `POST /api/me/status`. Times differ from phone
+  to phone, and Android may shift a run by some minutes to save battery.
+- **Every minute while the app is open**, the phone uploads its own status.
+- **While someone is watching.** The open app calls
+  `POST /api/group/presence` with `active: true` every 30 seconds. Inside
+  that request the API sends a silent Firebase push,
+  `{ type: "STATUS_REQUEST", reason: "live" }`, to the other members, at most
+  once per `LIVE_PUSH_INTERVAL_SECONDS` per group. Their apps wake, upload
+  their status, and the viewer's list refreshes. This needs
+  `FIREBASE_SERVICE_ACCOUNT`; without it, the other phones are only as fresh
+  as their last hourly upload.
 
 ## Deploy to Vercel
 
-1. Import the folder as a Vercel project.
+1. Import the folder as a Vercel project (Root Directory `geotracker-api`).
+   The free Hobby plan is enough: nothing is scheduled.
 2. Add the environment variables from the table above.
 3. Deploy, then set the app's production API URL to the deployment URL.

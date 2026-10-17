@@ -20,7 +20,8 @@ function getFirebaseApp(): App | null {
   return initializeApp({ credential: cert(JSON.parse(json)) });
 }
 
-export type StatusRequestReason = 'hourly' | 'live';
+/** Why the status was requested; only live viewing asks for now. */
+export type StatusRequestReason = 'live';
 
 export interface PushResult {
   sent: number;
