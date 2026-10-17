@@ -400,7 +400,7 @@ test('the green dot follows the screen state, not the app', async () => {
   // A phone that stopped reporting drops back to away.
   await users.updateOne(
     { _id: new ObjectId(cara.id) },
-    { $set: { lastHeardAt: new Date(Date.now() - 6 * 60 * 1000) } },
+    { $set: { lastHeardAt: new Date(Date.now() - 2 * 60 * 1000) } },
   );
   assert.equal((await find()).active, false);
 

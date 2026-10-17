@@ -8,6 +8,7 @@ import { statusSchema } from '@/lib/schemas';
  * Device status upload: battery, charging, sound mode, screen state, location.
  * Phones send only what changed, or `{ alive: true }` when nothing did. Every
  * call records that the phone reported in; only changed fields are stored.
+ * During a live session a moving phone may call this every second.
  */
 export const POST = authed(async (request, { user }) => {
   const body = await parseBody(request, statusSchema);

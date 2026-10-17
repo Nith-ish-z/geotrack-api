@@ -68,9 +68,9 @@ export const config = {
 /**
  * A member shows as active (green dot) when their last report said the screen
  * was on and that report is at most this old. While anyone has the app open,
- * the others report every ~30 seconds, so this only expires for phones that
- * stopped answering.
+ * the others send an alive ping at least every 25 seconds, so this only
+ * expires for phones that stopped answering.
  */
-export const ACTIVE_WINDOW_MS = 5 * 60 * 1000;
+export const ACTIVE_WINDOW_MS = 60 * 1000;
 /** Avatar upload limit, measured on the base64 text. */
 export const AVATAR_MAX_BASE64_LENGTH = 200_000;

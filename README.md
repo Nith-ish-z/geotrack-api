@@ -148,7 +148,7 @@ charging, ringer or screen change, or moving about 7 m (≈ 23 ft) or more.
 
 Each member row also has `id`, `name`, `avatarUrl`, `isSelf`, `isCreator`,
 `active` and `lastSeenAt`. `active` (the green dot) means the phone's screen
-was on at its last report and that report is under 5 minutes old.
+was on at its last report and that report is under 1 minute old.
 `lastSeenAt` is when the phone last reported, changed or not. Phone numbers are
 never sent to other members.
 
@@ -179,22 +179,84 @@ Indexes are created automatically on first connection.
 
 The API never runs on its own: there is no cron job or background process.
 Every change starts with a request from a phone, and the API only checks it,
-stores it in MongoDB and answers. Phones keep the data fresh in three ways:
+stores it in MongoDB and answers.
 
-- **About once an hour, on each phone's own clock.** The app schedules a
-  background job with Android's WorkManager when the user logs in. It wakes
-  roughly every 60 minutes, counted from when it was first scheduled, reads
-  the device status and calls `POST /api/me/status`. Times differ from phone
-  to phone, and Android may shift a run by some minutes to save battery.
-- **Every minute while the app is open**, the phone uploads its own status.
-- **While someone is watching.** The open app calls
-  `POST /api/group/presence` with `active: true` every 30 seconds. Inside
-  that request the API sends a silent Firebase push,
-  `{ type: "STATUS_REQUEST", reason: "live" }`, to the other members, at most
-  once per `LIVE_PUSH_INTERVAL_SECONDS` per group. Their apps wake, upload
-  their status, and the viewer's list refreshes. This needs
-  `FIREBASE_SERVICE_ACCOUNT`; without it, the other phones are only as fresh
-  as their last hourly upload.
+**Nobody has the app open.** Each phone wakes about once an hour on its own
+clock (Android WorkManager), reads its status and sends changes or an alive
+ping.
+
+**Someone has the app open.**
+
+1. The viewer's app polls `GET /api/group` every second and calls
+   `POST /api/group/presence` every 30 seconds.
+2. Inside each presence call the API sends a silent Firebase push,
+   `{ type: "STATUS_REQUEST", reason: "live" }`, to the other members, at most
+   once per `LIVE_PUSH_INTERVAL_SECONDS` per group.
+3. Each push starts or extends a 60-second live session on the receiving
+   phone. If its app is closed, Android shows a "Sharing live location"
+   notification while the session runs (a location foreground service).
+4. During the session the phone samples battery, charging, ringer, screen and
+   GPS every second and sends only real changes. When nothing changes it sends
+   an alive ping every 25 seconds, so it stays within the 1-minute active
+   window.
+5. When the viewer closes the app, the pushes stop and each session ends within
+   a minute.
+
+The viewer's own phone runs the same one-second sampling the whole time its
+app is open.
+
+### Upload payloads (`POST /api/me/status`)
+
+First upload after login, after a sharing change, and every 6 hours: every
+shared field.
+
+```json
+{
+  "battery": 84,
+  "charging": true,
+  "soundMode": "normal",
+  "screenOn": true,
+  "location": { "latitude": 12.9716, "longitude": 77.5946, "accuracy": 8 }
+}
+```
+
+Something changed: only the changed fields. Battery dropped a percent:
+
+```json
+{ "battery": 83 }
+```
+
+Unplugged and locked the phone:
+
+```json
+{ "charging": false, "screenOn": false }
+```
+
+Moved about 7 m (23 ft) or more:
+
+```json
+{ "location": { "latitude": 12.97166, "longitude": 77.59472, "accuracy": 6 } }
+```
+
+Nothing changed: an alive ping, at most every 25 seconds during a live
+session, once per hourly wake-up otherwise. Smaller moves (GPS jitter) count
+as no change.
+
+```json
+{ "alive": true }
+```
+
+Every upload answers `{ "ok": true, "changed": <bool>, "receivedAt": "..." }`.
+A field that is switched off in the sharing settings is never sent.
+
+### Request volume
+
+Vercel counts every request. One viewer for one hour sends about 3,600 group
+polls; each other member sends up to one upload per second while moving
+(roughly every 5 seconds walking, every 1 to 2 seconds driving) and one alive
+ping per 25 seconds while still. The Hobby plan's monthly allowance covers
+light use; heavy daily viewing may need a longer poll interval
+(`GROUP_POLL_MS` in the app's `src/config.ts`).
 
 ## Deploy to Vercel
 
