@@ -65,7 +65,12 @@ export const config = {
   },
 };
 
-/** A member counts as "active now" if their app pinged within this window. */
-export const ACTIVE_WINDOW_MS = 90 * 1000;
+/**
+ * A member shows as active (green dot) when their last report said the screen
+ * was on and that report is at most this old. While anyone has the app open,
+ * the others report every ~30 seconds, so this only expires for phones that
+ * stopped answering.
+ */
+export const ACTIVE_WINDOW_MS = 5 * 60 * 1000;
 /** Avatar upload limit, measured on the base64 text. */
 export const AVATAR_MAX_BASE64_LENGTH = 200_000;

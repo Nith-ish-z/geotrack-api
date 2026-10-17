@@ -49,10 +49,12 @@ export const fcmTokenSchema = z.object({
 });
 
 /**
- * Device status upload. Every field is optional so a device can report what
- * it was able to read; omitted fields keep their stored value.
+ * Device status upload. Phones send only the fields that changed since their
+ * last upload; omitted fields keep their stored value. With nothing changed
+ * they send just `{ alive: true }`, which only records that they reported.
  */
 export const statusSchema = z.object({
+  alive: z.literal(true).optional(),
   battery: z.number().int().min(0).max(100).optional(),
   charging: z.boolean().optional(),
   soundMode: z.enum(['silent', 'vibrate', 'normal']).optional(),

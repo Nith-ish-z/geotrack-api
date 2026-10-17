@@ -383,16 +383,69 @@ test('a pause that has run out goes back to sharing', async () => {
   assert.ok(row.location);
 });
 
-test('presence marks a member active and inactive', async () => {
-  const on = await cara.call('POST', '/api/group/presence', { active: true });
-  assert.equal(on.status, 200, JSON.stringify(on.body));
+test('the green dot follows the screen state, not the app', async () => {
   const find = async () =>
     (await admin.call('GET', '/api/group')).body.members.find(
       m => m.id === cara.id,
     );
-  assert.equal((await find()).active, true);
-  await cara.call('POST', '/api/group/presence', { active: false });
+
+  // Having the app open no longer counts by itself.
+  await cara.call('POST', '/api/me/status', { screenOn: false });
+  await cara.call('POST', '/api/group/presence', { active: true });
   assert.equal((await find()).active, false);
+
+  await cara.call('POST', '/api/me/status', { screenOn: true });
+  assert.equal((await find()).active, true);
+
+  // A phone that stopped reporting drops back to away.
+  await users.updateOne(
+    { _id: new ObjectId(cara.id) },
+    { $set: { lastHeardAt: new Date(Date.now() - 6 * 60 * 1000) } },
+  );
+  assert.equal((await find()).active, false);
+
+  // Hiding the screen state hides the dot too.
+  await cara.call('POST', '/api/me/status', { alive: true });
+  assert.equal((await find()).active, true);
+  await cara.call('PUT', '/api/me/preferences', { shareScreen: false });
+  assert.equal((await find()).active, false);
+  await cara.call('PUT', '/api/me/preferences', { shareScreen: true });
+  await cara.call('POST', '/api/group/presence', { active: false });
+});
+
+test('an alive ping records the report without touching the data', async () => {
+  await cara.call('POST', '/api/me/status', {
+    battery: 61,
+    charging: false,
+    soundMode: 'vibrate',
+    screenOn: true,
+    location: { latitude: 12.9716, longitude: 77.5946, accuracy: 8 },
+  });
+  const before = await users.findOne({ _id: new ObjectId(cara.id) });
+  await new Promise(resolve => setTimeout(resolve, 20));
+
+  const ping = await cara.call('POST', '/api/me/status', { alive: true });
+  assert.equal(ping.status, 200, JSON.stringify(ping.body));
+  assert.equal(ping.body.changed, false);
+
+  const after = await users.findOne({ _id: new ObjectId(cara.id) });
+  assert.deepEqual(after.status, before.status, 'stored data is unchanged');
+  assert.ok(after.lastHeardAt > before.lastHeardAt, 'the report time moves on');
+
+  const row = (await admin.call('GET', '/api/group')).body.members.find(
+    m => m.id === cara.id,
+  );
+  assert.equal(row.battery, 61);
+  assert.equal(row.soundMode, 'vibrate');
+  assert.equal(new Date(row.lastSeenAt).getTime(), after.lastHeardAt.getTime());
+
+  // A change-only upload updates just that field.
+  const moved = await cara.call('POST', '/api/me/status', { battery: 60 });
+  assert.equal(moved.body.changed, true);
+  const updated = await users.findOne({ _id: new ObjectId(cara.id) });
+  assert.equal(updated.status.battery, 60);
+  assert.equal(updated.status.soundMode, 'vibrate');
+  assert.equal(updated.status.location.latitude, 12.9716);
 });
 
 test('avatars are served to the group only', async () => {

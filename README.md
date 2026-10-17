@@ -24,18 +24,18 @@ npm run test:smoke   # end-to-end test of every rule below, on a throwaway DB
 
 Set these in `.env.local` locally and as environment variables on Vercel.
 
-| Variable | Required | Default | Purpose |
-|---|---|---|---|
-| `MONGODB_URI` | yes | – | Atlas connection string |
-| `MONGODB_DB` | no | `geotracker` | Database name |
-| `JWT_SECRET` | yes | – | Signs session tokens; 32+ random characters |
-| `JWT_EXPIRES_DAYS` | no | `7` | Token lifetime |
-| `JWT_RENEW_GRACE_DAYS` | no | `30` | How long after expiry a token can still be renewed |
-| `FIREBASE_SERVICE_ACCOUNT` | for live push | – | Service account JSON (one line or base64); lets an open app ask the other phones for fresh status |
-| `STATIC_OTP` | no | `1101` | The login code every phone number accepts until an SMS provider is added |
-| `INVITE_CODE_TTL_SECONDS` | no | `120` | Invite code lifetime |
-| `GROUP_MAX_MEMBERS` | no | `6` | Members per group, creator included |
-| `LIVE_PUSH_INTERVAL_SECONDS` | no | `30` | Minimum gap between live status requests to one group |
+| Variable                     | Required      | Default      | Purpose                                                                                           |
+| ---------------------------- | ------------- | ------------ | ------------------------------------------------------------------------------------------------- |
+| `MONGODB_URI`                | yes           | –            | Atlas connection string                                                                           |
+| `MONGODB_DB`                 | no            | `geotracker` | Database name                                                                                     |
+| `JWT_SECRET`                 | yes           | –            | Signs session tokens; 32+ random characters                                                       |
+| `JWT_EXPIRES_DAYS`           | no            | `7`          | Token lifetime                                                                                    |
+| `JWT_RENEW_GRACE_DAYS`       | no            | `30`         | How long after expiry a token can still be renewed                                                |
+| `FIREBASE_SERVICE_ACCOUNT`   | for live push | –            | Service account JSON (one line or base64); lets an open app ask the other phones for fresh status |
+| `STATIC_OTP`                 | no            | `1101`       | The login code every phone number accepts until an SMS provider is added                          |
+| `INVITE_CODE_TTL_SECONDS`    | no            | `120`        | Invite code lifetime                                                                              |
+| `GROUP_MAX_MEMBERS`          | no            | `6`          | Members per group, creator included                                                               |
+| `LIVE_PUSH_INTERVAL_SECONDS` | no            | `30`         | Minimum gap between live status requests to one group                                             |
 
 Atlas: allow connections from `0.0.0.0/0` under Network Access, because
 Vercel functions have no fixed IP.
@@ -51,6 +51,7 @@ Vercel functions have no fixed IP.
    knows it can log in as any phone number, so this is for development and
    trusted testers only. Real codes go into `src/lib/otp.ts`; nothing else
    changes.
+
 2. The token's ID is stored on the user. Every request is checked against the
    signature and that stored ID, so a login on another phone or a logout
    invalidates the old token at once.
@@ -65,25 +66,25 @@ login calls.
 
 ## Endpoints
 
-| Method and path | Body | Does |
-|---|---|---|
-| `POST /api/auth/request-otp` | `{ phone }` | Ask for a login code; returns `codeLength` |
-| `POST /api/auth/login` | `{ phone, otp }` | Log in; returns `token`, `user`, group view |
-| `POST /api/auth/logout` | – | End the session, stop pushes to this device |
-| `GET /api/me` | – | Called on app open; returns `user` and group view |
-| `PATCH /api/me` | `{ name }` | Set display name |
-| `PUT /api/me/avatar` | `{ contentType, base64 }` | Set profile photo (about 150 KB max) |
-| `DELETE /api/me/avatar` | – | Remove profile photo |
-| `PUT /api/me/preferences` | any of the preference fields | Update sharing preferences |
-| `PUT /api/me/fcm-token` | `{ token }` | Register the device for push |
-| `POST /api/me/status` | status fields | Upload device status |
-| `GET /api/group` | – | Group and members' latest status |
-| `POST /api/group/invite` | – | Generate a 2-minute invite code |
-| `POST /api/group/join` | `{ code }` | Join a group by code |
-| `DELETE /api/group/members/:id` | – | Remove a member; creator only |
-| `POST /api/group/leave` | – | Leave the group |
-| `POST /api/group/presence` | `{ active }` | Foreground heartbeat; triggers live updates |
-| `GET /api/users/:id/avatar` | – | A member's photo, for the same group only |
+| Method and path                 | Body                         | Does                                              |
+| ------------------------------- | ---------------------------- | ------------------------------------------------- |
+| `POST /api/auth/request-otp`    | `{ phone }`                  | Ask for a login code; returns `codeLength`        |
+| `POST /api/auth/login`          | `{ phone, otp }`             | Log in; returns `token`, `user`, group view       |
+| `POST /api/auth/logout`         | –                            | End the session, stop pushes to this device       |
+| `GET /api/me`                   | –                            | Called on app open; returns `user` and group view |
+| `PATCH /api/me`                 | `{ name }`                   | Set display name                                  |
+| `PUT /api/me/avatar`            | `{ contentType, base64 }`    | Set profile photo (about 150 KB max)              |
+| `DELETE /api/me/avatar`         | –                            | Remove profile photo                              |
+| `PUT /api/me/preferences`       | any of the preference fields | Update sharing preferences                        |
+| `PUT /api/me/fcm-token`         | `{ token }`                  | Register the device for push                      |
+| `POST /api/me/status`           | status fields                | Upload device status                              |
+| `GET /api/group`                | –                            | Group and members' latest status                  |
+| `POST /api/group/invite`        | –                            | Generate a 2-minute invite code                   |
+| `POST /api/group/join`          | `{ code }`                   | Join a group by code                              |
+| `DELETE /api/group/members/:id` | –                            | Remove a member; creator only                     |
+| `POST /api/group/leave`         | –                            | Leave the group                                   |
+| `POST /api/group/presence`      | `{ active }`                 | Foreground heartbeat; triggers live updates       |
+| `GET /api/users/:id/avatar`     | –                            | A member's photo, for the same group only         |
 
 Errors are `{ "error": { "code", "message" } }` with a matching HTTP status.
 
@@ -91,15 +92,16 @@ The group view returned by login, `GET /api/me`, `GET /api/group` and join is:
 
 ```jsonc
 {
-  "group": {                 // null when the user is in no group
-    "id": "kq3ZtY0b1x_A",    // random slug; groups have no name
+  "group": {
+    // null when the user is in no group
+    "id": "kq3ZtY0b1x_A", // random slug; groups have no name
     "memberCount": 3,
     "maxMembers": 6,
     "isCreator": true,
-    "invite": { "code": "K7WQ2M", "expiresAt": "..." }  // creator only, while live
+    "invite": { "code": "K7WQ2M", "expiresAt": "..." }, // creator only, while live
   },
-  "canInvite": true,         // show the "Generate invite code" button
-  "members": [ /* the caller first, then the rest by name */ ]
+  "canInvite": true, // show the "Generate invite code" button
+  "members": [/* the caller first, then the rest by name */],
 }
 ```
 
@@ -126,33 +128,39 @@ The group view returned by login, `GET /api/me`, `GET /api/group` and join is:
 
 ### Device status: `POST /api/me/status`
 
-Every field is optional; a field left out keeps its stored value.
+Phones send only the fields that changed since their last upload; a field
+left out keeps its stored value. When nothing changed they send
+`{ "alive": true }`, which only records that the phone reported in
+(`lastHeardAt`). What counts as a change is decided on the phone: any battery,
+charging, ringer or screen change, or moving about 7 m (≈ 23 ft) or more.
 
-| Collected on the phone | Request field | Stored in `users` | In each `members[]` row |
-|---|---|---|---|
-| Battery percent, 0–100 | `battery` | `status.battery` | `battery` |
-| Plugged in and charging | `charging` | `status.charging` | `charging` |
-| Ringer mode: `silent`, `vibrate`, `normal` | `soundMode` | `status.soundMode` | `soundMode` |
-| Screen on | `screenOn` | `status.screenOn` | `screenOn` |
-| GPS latitude | `location.latitude` | `status.location.latitude` | `location.latitude` |
-| GPS longitude | `location.longitude` | `status.location.longitude` | `location.longitude` |
-| GPS accuracy, metres | `location.accuracy` | `status.location.accuracy` | `location.accuracy` |
-| – (server clock) | – | `status.updatedAt` | `statusUpdatedAt` |
-| – (server clock) | – | `status.location.updatedAt` | `location.updatedAt` |
+| Collected on the phone                     | Request field        | Stored in `users`           | In each `members[]` row |
+| ------------------------------------------ | -------------------- | --------------------------- | ----------------------- |
+| Battery percent, 0–100                     | `battery`            | `status.battery`            | `battery`               |
+| Plugged in and charging                    | `charging`           | `status.charging`           | `charging`              |
+| Ringer mode: `silent`, `vibrate`, `normal` | `soundMode`          | `status.soundMode`          | `soundMode`             |
+| Screen on                                  | `screenOn`           | `status.screenOn`           | `screenOn`              |
+| GPS latitude                               | `location.latitude`  | `status.location.latitude`  | `location.latitude`     |
+| GPS longitude                              | `location.longitude` | `status.location.longitude` | `location.longitude`    |
+| GPS accuracy, metres                       | `location.accuracy`  | `status.location.accuracy`  | `location.accuracy`     |
+| – (server clock)                           | –                    | `status.updatedAt`          | `statusUpdatedAt`       |
+| – (server clock)                           | –                    | `status.location.updatedAt` | `location.updatedAt`    |
 
 Each member row also has `id`, `name`, `avatarUrl`, `isSelf`, `isCreator`,
-`active` (app open in the last 90 seconds) and `lastSeenAt`. Phone numbers are
+`active` and `lastSeenAt`. `active` (the green dot) means the phone's screen
+was on at its last report and that report is under 5 minutes old.
+`lastSeenAt` is when the phone last reported, changed or not. Phone numbers are
 never sent to other members.
 
 ### Sharing preferences: `PUT /api/me/preferences`
 
-| App control | Field | Effect on what others see |
-|---|---|---|
-| Share real time location | `shareLocation` | `false` hides `location` |
-| Real-Time Location Mode | `locationMode` (`share`, `pause_30m`, `pause_1h`, `pause_2h`, `pause_5h`, `pause_12h`, `pause_1d`, `pause_7d`) | A pause hides `location` until `pauseUntil`, then sharing resumes by itself |
-| Share Battery & Charge Stats | `shareBattery` | `false` hides `battery` and `charging` |
-| Share Screen Active Status | `shareScreen` | `false` hides `screenOn` |
-| Share Sound Profile | `shareSound` | `false` hides `soundMode` |
+| App control                  | Field                                                                                                          | Effect on what others see                                                   |
+| ---------------------------- | -------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| Share real time location     | `shareLocation`                                                                                                | `false` hides `location`                                                    |
+| Real-Time Location Mode      | `locationMode` (`share`, `pause_30m`, `pause_1h`, `pause_2h`, `pause_5h`, `pause_12h`, `pause_1d`, `pause_7d`) | A pause hides `location` until `pauseUntil`, then sharing resumes by itself |
+| Share Battery & Charge Stats | `shareBattery`                                                                                                 | `false` hides `battery` and `charging`                                      |
+| Share Screen Active Status   | `shareScreen`                                                                                                  | `false` hides `screenOn`                                                    |
+| Share Sound Profile          | `shareSound`                                                                                                   | `false` hides `soundMode`                                                   |
 
 Hidden fields arrive as `null`. A member always sees their own row in full.
 

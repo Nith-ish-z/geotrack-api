@@ -33,6 +33,7 @@ export const POST = route(async request => {
         preferences: defaultPreferences,
         status: null,
         lastActiveAt: null,
+        lastHeardAt: null,
         createdAt: now,
       },
     },

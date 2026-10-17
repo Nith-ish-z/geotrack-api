@@ -59,8 +59,10 @@ export interface UserDoc {
   fcmToken: string | null;
   preferences: Preferences;
   status: DeviceStatus | null;
-  /** Last foreground heartbeat from the app. */
+  /** Last foreground heartbeat from the app; only used to trigger pushes. */
   lastActiveAt: Date | null;
+  /** Last time the phone reported in at all, with or without changes. */
+  lastHeardAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
 }

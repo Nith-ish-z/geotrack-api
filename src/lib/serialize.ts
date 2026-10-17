@@ -72,8 +72,18 @@ export function serializeMember(
         }
       : null;
 
-  const lastActiveAt = member.lastActiveAt?.getTime() ?? 0;
-  const lastSeenAt = Math.max(lastActiveAt, status?.updatedAt.getTime() ?? 0);
+  // When the phone last reported, with or without changes. Older accounts
+  // that predate pings fall back to their last status change.
+  const lastHeardAt =
+    member.lastHeardAt?.getTime() ?? status?.updatedAt.getTime() ?? 0;
+  const screenShared = isSelf || prefs.shareScreen;
+  // Active = the screen was on at the last report, and that report is recent.
+  // Your own row is always active: you are looking at it.
+  const active =
+    isSelf ||
+    (screenShared &&
+      status?.screenOn === true &&
+      now.getTime() - lastHeardAt < ACTIVE_WINDOW_MS);
 
   return {
     id: member._id.toHexString(),
@@ -81,8 +91,8 @@ export function serializeMember(
     avatarUrl: avatarUrl(member),
     isSelf,
     isCreator: !!creatorId && member._id.equals(creatorId),
-    active: now.getTime() - lastActiveAt < ACTIVE_WINDOW_MS,
-    lastSeenAt: lastSeenAt ? new Date(lastSeenAt) : null,
+    active,
+    lastSeenAt: lastHeardAt ? new Date(lastHeardAt) : null,
     battery: isSelf || prefs.shareBattery ? (status?.battery ?? null) : null,
     charging: isSelf || prefs.shareBattery ? (status?.charging ?? null) : null,
     soundMode: isSelf || prefs.shareSound ? (status?.soundMode ?? null) : null,
